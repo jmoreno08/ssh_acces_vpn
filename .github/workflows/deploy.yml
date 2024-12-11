@@ -1,0 +1,54 @@
+name: Deploy Docker Containers
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Paso 1: Configurar el repositorio
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    # Paso 2: Conectar a la VPN
+    - name: Connect to VPN
+      run: |
+        echo "${{ secrets.VPN_CONFIG }}" > vpn-config.ovpn
+        sudo apt-get update && sudo apt-get install -y openvpn
+        sudo openvpn --config vpn-config.ovpn --daemon
+      env:
+        VPN_CONFIG: ${{ secrets.VPN_CONFIG }}
+
+    # Paso 3: Establecer conexión SSH
+    - name: Connect via SSH
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USER }}
+        password: ${{ secrets.REMOTE_PASSWORD }}
+        port: 22
+        script: |
+          echo "SSH connection established"
+
+    # Paso 4: Desplegar contenedores Docker
+    - name: Deploy Docker Containers
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USER }}
+        password: ${{ secrets.REMOTE_PASSWORD }}
+        port: 22
+        script: |
+          docker-compose down
+          docker-compose pull
+          docker-compose up -d
+
+    # Paso 5: Desconectar de la VPN
+    - name: Disconnect VPN
+      if: always() # Asegura que este paso se ejecute incluso si hay errores previos
+      run: |
+        sudo pkill openvpn
