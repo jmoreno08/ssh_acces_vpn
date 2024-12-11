@@ -15,18 +15,27 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    # Paso 2: Conectar a la VPN
-    - name: Connect to VPN
+    # Paso 2: Configurar archivo VPN y conectarse
+    - name: Configure and Connect to VPN
       run: |
         echo "${{ secrets.VPN_CONFIG }}" > vpn-config.ovpn
+        echo "${{ secrets.VPN_CREDENTIALS }}" > vpn-credentials.txt
+        chmod 600 vpn-credentials.txt
         sudo apt-get update && sudo apt-get install -y openvpn
-        sudo openvpn --config vpn-config.ovpn --daemon
+        sudo openvpn --config vpn-config.ovpn --auth-user-pass vpn-credentials.txt --daemon
       env:
         VPN_CONFIG: ${{ secrets.VPN_CONFIG }}
+        VPN_CREDENTIALS: ${{ secrets.VPN_CREDENTIALS }}
 
-    # Paso 3: Establecer conexión SSH
+    # Paso 3: Verificar conexión VPN
+    - name: Verify VPN Connection
+      run: |
+        curl ifconfig.me
+        echo "VPN connected successfully!"
+
+    # Paso 4: Establecer conexión SSH
     - name: Connect via SSH
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.REMOTE_HOST }}
         username: ${{ secrets.REMOTE_USER }}
@@ -35,9 +44,9 @@ jobs:
         script: |
           echo "SSH connection established"
 
-    # Paso 4: Desplegar contenedores Docker
+    # Paso 5: Desplegar contenedores Docker
     - name: Deploy Docker Containers
-      uses: appleboy/ssh-action@master
+      uses: appleboy/ssh-action@v1.0.0
       with:
         host: ${{ secrets.REMOTE_HOST }}
         username: ${{ secrets.REMOTE_USER }}
@@ -48,7 +57,7 @@ jobs:
           docker-compose pull
           docker-compose up -d
 
-    # Paso 5: Desconectar de la VPN
+    # Paso 6: Desconectar de la VPN
     - name: Disconnect VPN
       if: always() # Asegura que este paso se ejecute incluso si hay errores previos
       run: |
