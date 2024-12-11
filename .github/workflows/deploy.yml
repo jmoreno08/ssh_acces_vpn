@@ -56,7 +56,7 @@ jobs:
            # Ejecutar contenedor hello-world como ejemplo
             docker run hello-world
 
-    # Paso 6: Desconectar de la VPN
+            # Paso 6: Desconectar de la VPN
     - name: Disconnect VPN
       if: always() # Asegura que este paso se ejecute incluso si hay errores previos
       run: |
