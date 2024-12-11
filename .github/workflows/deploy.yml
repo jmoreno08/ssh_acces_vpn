@@ -1,4 +1,4 @@
-name: Deploy Docker Containers 2
+name: Deploy Docker Containers
 
 on:
   push:
@@ -23,42 +23,40 @@ jobs:
         chmod 600 vpn-credentials.txt
         sudo apt-get update && sudo apt-get install -y openvpn
         sudo openvpn --config vpn-config.ovpn --auth-user-pass vpn-credentials.txt --daemon
-      env:
-        VPN_CONFIG: ${{ secrets.VPN_CONFIG }}
-        VPN_CREDENTIALS: ${{ secrets.VPN_CREDENTIALS }}
 
     # Paso 3: Verificar conexión VPN
     - name: Verify VPN Connection
       run: |
-        curl ifconfig.me
-        echo "VPN connected successfully!"
+        IP=$(curl -s ifconfig.me)
+        echo "Connected via VPN with IP: $IP"
+        # Opcional: Validar que IP pertenezca a la red esperada
+        [[ $IP =~ ^198\.51\.100\..*$ ]] || exit 1
 
     # Paso 4: Establecer conexión SSH
     - name: Connect via SSH
-      uses: appleboy/ssh-action@v1.0.0
+      uses: appleboy/ssh-action@master
       with:
         host: ${{ secrets.REMOTE_HOST }}
         username: ${{ secrets.REMOTE_USER }}
-        password: ${{ secrets.REMOTE_PASSWORD }}
+        key: ${{ secrets.REMOTE_PASSWORD }}
         port: 22
         script: |
           echo "SSH connection established"
 
-    # Paso 5: Desplegar contenedores Docker
-    - name: Deploy Docker Containers
-      uses: appleboy/ssh-action@v1.0.0
+    # Paso 5: Ejecutar contenedor Docker (Ejemplo con hello-world)
+    - name: Run Docker Hello World Container
+      uses: appleboy/ssh-action@v0.1.3
       with:
         host: ${{ secrets.REMOTE_HOST }}
         username: ${{ secrets.REMOTE_USER }}
-        password: ${{ secrets.REMOTE_PASSWORD }}
+        key: ${{ secrets.REMOTE_PASSWORD }}
         port: 22
         script: |
-          docker-compose down
-          docker-compose pull
-          docker-compose up -d
+          # Ejecutar contenedor hello-world como ejemplo
+          docker run hello-world
 
     # Paso 6: Desconectar de la VPN
     - name: Disconnect VPN
-      if: always() # Asegura que este paso se ejecute incluso si hay errores previos
+      if: always()
       run: |
         sudo pkill openvpn
